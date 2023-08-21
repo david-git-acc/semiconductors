@@ -117,7 +117,8 @@ for fab in opensemifabs:
     location = get_coords(location_data)
     
     country_data = sanitisestring(fields[2].text, 0)
-    country_counter.update({country_data : 1})
+    if country_data:
+        country_counter.update({country_data : 1})
     
     node_sizes = get_numbers_only(process_technology_data)
     
@@ -136,8 +137,9 @@ for fab in closedsemifabs:
 
     location_data = sanitisestring( fields[2].text, -1 )
     
-    country_data = sanitisestring(fields[2].text, 0)
-    country_counter.update({country_data : 1})
+    country_data = fields[2].text.split(",")[0]
+    if country_data:
+        country_counter.update({country_data : 1})
     
     location = get_coords(location_data)
     
@@ -148,12 +150,16 @@ for fab in closedsemifabs:
         
 
 
-minimum = min(specified_node_sizes)
 
 from mpl_toolkits.basemap import Basemap
 from matplotlib import pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
+
+minimum = min(specified_node_sizes)
+
+
+    
 
 # I borrowed this palette from the development mapmode on EU4 
 my_cmap=mcolors.LinearSegmentedColormap.from_list('rg',["darkred", "yellow", "lime"], N=256).reversed()
@@ -176,35 +182,71 @@ lon_max = 180
 px=1/96
 
 
+
 the_map = Basemap(llcrnrlon=lon_min, 
                   llcrnrlat=lat_min,
                   urcrnrlon=lon_max, 
                   urcrnrlat=lat_max, 
-                  resolution="l", 
-                  projection="merc")
+                  resolution="l", projection="mill")
 
 
 
-the_map.drawcoastlines()
-the_map.fillcontinents(color="white", lake_color="#7FCDFF")
+# the_map.drawcoastlines()
+# the_map.fillcontinents(color="white", lake_color="#7FCDFF")
+the_map.drawcountries(color="#D3D3D3")
+# the_map.drawmapboundary(fill_color="#7FCDFF")
 
 longitudes_specified, latitudes_specified = the_map(longitudes_specified, latitudes_specified)
 longitudes_unspecified, latitudes_unspecified = the_map(longitudes_unspecified, latitudes_unspecified)
 longitudes_closed, latitudes_closed = the_map(longitudes_closed, latitudes_closed)
 
-the_map.drawcountries()
-the_map.drawmapboundary(fill_color="#7FCDFF")
 
-figure = plt.gcf()
+
+fig = plt.gcf()
 ax = plt.gca()
+
+fig.set_figheight(1080*px)
+fig.set_figwidth(1920*px)
+
 
 the_scattering = the_map.scatter(longitudes_specified,latitudes_specified, s=32, edgecolor="black", marker="o", c=specified_node_sizes, cmap = my_cmap, label = "Specified size")
 unspecified_scattering = the_map.scatter(longitudes_unspecified, latitudes_unspecified, edgecolor="black", marker="s", s=16, c="blue", label = "Unspecified")
-closed_scattering = the_map.scatter(longitudes_closed, latitudes_closed, s=32, marker="x", c = "red", label = "Closed Fab")
+closed_scattering = the_map.scatter(longitudes_closed, latitudes_closed, s=32, marker="x", c = "red", label = "Closed fab")
 
 bar = plt.colorbar(mappable=the_scattering, extend="both", label="Smallest FAB node size (nm) (coded: f(x) = ln( x * e / min ) )")
 
-plt.title("Locations of semiconductor FABs and their node sizes")
+plt.title("Locations of semiconductor fabs and their node sizes")
+
+
+
+
+
+n = 10
+top_n = sorted(country_counter.items(), key=lambda x:x[1], reverse= True  )[0:n]
+
+events_text = plt.text(-0.18,0.975, 
+                       f"Top {n} countries (by\nnumber of fabs)", 
+                       fontsize = 15,
+                       transform=ax.transAxes )
+
+print("TOP N:" , top_n )
+i = 1
+for country, number in top_n:
+    print(country, number)
+    string = f"{i}. {country} ({number})"
+    text = plt.text(-0.18,0.95 - i / 32, 
+                       string,  
+                       transform=ax.transAxes )
+    i += 1
+    
 
 plt.legend()
+
+the_map.bluemarble()
+
+
+plt.savefig("test.png")
+
+
+
 plt.show()
